@@ -16,4 +16,5 @@ class Dossier extends Model implements HasMedia
 
     protected $table='dossiers';
     protected $guarded =[];
+    protected $fillable = ['perso_id', 'email', 'description'];
 }

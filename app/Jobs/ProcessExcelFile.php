@@ -8,52 +8,37 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
-use Maatwebsite\Excel\Facades\Excel;
-
-use Illuminate\Support\Facades\Log;
-
 
 class ProcessExcelFile implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Create a new job instance.
-     */
+    protected $donnees;
 
-    protected $storedFilePath;
-    public function __construct($storedFilePath)
+    public function __construct($donnees)
     {
-        //
-        $this->storedFilePath = $storedFilePath;
-
+        $this->donnees = $donnees;
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
         try {
-            // Retrieve the file from the local disk
-            $fileContents = Storage::disk('public')->url($this->storedFilePath);
-          
-      
-         
-            $data = Excel::toArray([], $fileContents);
             $rowsToInsert = [];
             $rowsToUpdate = [];
-  
-            for ($i = 1; $i < count($data[0]); $i++) {
-                $row = $data[0][$i];
-                if (array_filter($row)) {
+
+            if (is_array($this->donnees) && count($this->donnees) > 0) {
+                // Skip the first row (header row)
+                $data = $this->donnees;
+                array_shift($data); // Remove the first row
+
+                foreach ($data as $row) {
                     $rowData = [
                         'perso_id' => $row[0],
                         'email' => $row[1],
                         'description' => $row[2],
-                        // Add more columns as needed
                     ];
+
+                    // Your additional logic here, e.g., setting 'slug' and 'created_at'
                     $rowData['slug'] = 'dos1';
                     $rowData['created_at'] = now();
 
@@ -68,14 +53,14 @@ class ProcessExcelFile implements ShouldQueue
                         $rowsToInsert[] = $rowData;
                     }
                 }
-            }
 
-// Batch insert new rows
-            Dossier::insert($rowsToInsert);
+                // Batch insert new rows
+                Dossier::insert($rowsToInsert);
 
-// Batch update existing rows
-            foreach ($rowsToUpdate as $row) {
-                Dossier::where('perso_id', $row['perso_id'])->update($row);
+                // Batch update existing rows
+                foreach ($rowsToUpdate as $row) {
+                    Dossier::where('perso_id', $row['perso_id'])->update($row);
+                }
             }
 
         } catch (\Exception $e) {

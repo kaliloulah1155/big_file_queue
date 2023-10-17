@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessExcelFile;
 use Auth;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -13,7 +14,7 @@ class UploadControler extends Controller
     {
         try {
             $file = $request->file('file');
-
+            $donnees = [];
             if ($file) {
                 // Authenticate the user
                 Auth::loginUsingId(1);
@@ -35,14 +36,28 @@ class UploadControler extends Controller
                     $worksheet = $spreadsheet->getActiveSheet();
 
                     // Get the data from the worksheet
-                    $data = $worksheet->toArray();
+                    $donnees = $worksheet->toArray();
 
                     // Now you have the Excel data in the $data array
-                    dd($data);
-                }
 
-                // Dispatch the job with the stored file path
-                // ProcessExcelFile::dispatch($storedFilePath);
+                    // Dispatch the job with the stored file path
+
+                    $newData = [];
+
+                    foreach ($donnees as $row) {
+                        if (!empty($row[0])) {
+                            $newData[] = $row;
+                        }
+                    }
+/*
+echo '<pre>';
+print_r($newData);
+
+exit;*/
+
+                    ProcessExcelFile::dispatch($newData);
+
+                }
 
                 return "Processing of the Excel file has been queued.";
 
